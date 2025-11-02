@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+
+/* ====== Tema LABit/UFPA — Tailwind v4 tokens ====== */
+@theme {
+  --color-primary: #4C72DD;     /* Azul médio: destaque texto/ícones/botões */
+  --color-primary-600: #3B5BCA; /* hover */
+  --color-accent: #A9BEEE;      /* Azul claro: áreas suaves */
+  --color-bg: #FCFEFD;          /* Fundo branco suave */
+
+
+  --radius-card: 1rem;
+}
+
+
+/* ====== Base ====== */
+html, body, #root {
+  height: 100%;
+  background: var(--color-bg);
+}
+
+
+/* ====== Helpers globais ====== */
+.card {
+  border-radius: var(--radius-card);
+  background: white;
+  border: 1px solid color-mix(in oklab, var(--color-accent) 35%, transparent);
+  box-shadow: 0 10px 30px rgba(19,39,87,.06);
+}
+
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center font-medium rounded-lg transition;
+  }
+
+  .btn-primary {
+    background: var(--color-primary);
+    color: white;
+    padding: .75rem 1rem;
+  }
+  .btn-primary:hover { background: var(--color-primary-600); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Botão secundário */
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2;
+  }
+
+  /* Badges por dificuldade */
+  .badge {
+    @apply inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border;
+  }
+  .badge-easy   { @apply border-green-200  bg-green-50  text-green-800; }
+  .badge-medium { @apply border-yellow-200 bg-yellow-50 text-yellow-800; }
+  .badge-hard   { @apply border-red-200    bg-red-50    text-red-800; }
+}
+
+
+/* ===== NOVOS ESTILOS PARA AS ABAS E EXEMPLOS ===== */
+
+
+/* Animações para loading */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+
+/* markdown base (já existia, mantém) */
+.prose { max-width: 100%; }

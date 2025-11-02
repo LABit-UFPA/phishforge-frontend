@@ -1,0 +1,6 @@
+.markdown { line-height: 1.6; }
+.markdown h1, .markdown h2, .markdown h3 { margin: 1rem 0 .5rem; font-weight: 700; }
+.markdown p { margin: .5rem 0; }
+.markdown a { color: var(--color-primary); text-decoration: underline; }
+.markdown code { background: color-mix(in oklab, var(--color-accent) 25%, white); padding: .15rem .35rem; border-radius: .35rem; }
+.markdown ul { padding-left: 1.25rem; list-style: disc; }
