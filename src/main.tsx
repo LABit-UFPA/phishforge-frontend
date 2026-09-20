@@ -10,6 +10,7 @@ import EvaluationPage from './modules/evaluation/pages/EvaluationPage.tsx'
 import FinishedPage from './modules/evaluation/pages/FinishedPage.tsx'
 import LoginPage from './modules/evaluation/pages/LoginPage.tsx'
 import ProfilePage from './modules/evaluation/pages/ProfilePage.tsx'
+import ResearcherPage from './modules/researcher/pages/ResearcherPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -27,6 +28,9 @@ createRoot(document.getElementById('root')!).render(
             <Route path="concluido" element={<FinishedPage />} />
             <Route path=":ordem" element={<EvaluationPage />} />
           </Route>
+
+          {/* Console do pesquisador: credencial própria (X-API-Key), fora da sessão de especialista. */}
+          <Route path="/pesquisador" element={<ResearcherPage />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

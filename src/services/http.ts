@@ -49,15 +49,21 @@ interface RequestInitApi {
    * `especialista`: rotas de `/api/v1/expert`, autenticadas por JWT (`Bearer`) e
    * SEM a chave do serviço — um especialista no navegador não a tem, e mandá-la
    * só a espalharia mais um pouco pelo bundle.
+   * `pesquisador`: rotas de `/api/v1/researcher`, com a `RESEARCHER_API_KEY` digitada
+   * pelo pesquisador (nunca a chave do serviço).
    */
-  escopo?: 'servico' | 'especialista'
+  escopo?: 'servico' | 'especialista' | 'pesquisador'
   token?: string | null
+  /** Chave do console do pesquisador (`escopo: 'pesquisador'`): vai em `X-API-Key`. */
+  apiKey?: string | null
 }
 
-export async function request<T>(path: string, init: RequestInitApi = {}): Promise<T> {
+async function chamar(path: string, init: RequestInitApi): Promise<Response> {
   const headers: Record<string, string> = {}
   if (init.escopo === 'especialista') {
     if (init.token) headers['Authorization'] = `Bearer ${init.token}`
+  } else if (init.escopo === 'pesquisador') {
+    if (init.apiKey) headers['X-API-Key'] = init.apiKey
   } else if (API_KEY) {
     headers['X-API-Key'] = API_KEY
   }
@@ -82,8 +88,19 @@ export async function request<T>(path: string, init: RequestInitApi = {}): Promi
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null)
     let detail = formatDetail(body, `HTTP ${res.status} ${res.statusText}`)
-    if (res.status === 401) detail += ' (verifique VITE_API_KEY)'
+    if (res.status === 401) detail += init.escopo === 'pesquisador' ? ' (confira a chave do pesquisador)' : ' (verifique VITE_API_KEY)'
     throw new ApiError(res.status, detail)
   }
+  return res
+}
+
+export async function request<T>(path: string, init: RequestInitApi = {}): Promise<T> {
+  const res = await chamar(path, init)
   return res.json() as Promise<T>
+}
+
+/** Como `request`, mas devolve o corpo cru (downloads de CSV/JSON). */
+export async function requestBlob(path: string, init: RequestInitApi = {}): Promise<Blob> {
+  const res = await chamar(path, init)
+  return res.blob()
 }
