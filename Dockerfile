@@ -15,6 +15,11 @@ COPY . .
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
+# So para a instancia de curadoria em DEV (vai para o bundle, publica). Nunca
+# em imagem de producao: deixe vazio.
+ARG VITE_API_KEY=
+ENV VITE_API_KEY=$VITE_API_KEY
+
 # full (todas as rotas) | expert (so /avaliacao/*). Ver README.
 ARG VITE_APP_MODE=full
 ENV VITE_APP_MODE=$VITE_APP_MODE
