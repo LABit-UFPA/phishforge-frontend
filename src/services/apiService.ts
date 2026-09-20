@@ -30,7 +30,7 @@ export function getEmailById(emailId: string): Promise<PhishingEmail> {
 }
 
 /** Listar emails com filtros */
-export function listEmails(filters: EmailFilters = {}): Promise<EmailListResponse> {
+export function listEmails(filters: EmailFilters = {}, signal?: AbortSignal): Promise<EmailListResponse> {
   const params = new URLSearchParams()
 
   if (filters.categoria) params.append('categoria', filters.categoria)
@@ -40,12 +40,12 @@ export function listEmails(filters: EmailFilters = {}): Promise<EmailListRespons
   if (filters.offset) params.append('offset', filters.offset.toString())
 
   const query = params.toString()
-  return request<EmailListResponse>(query ? `/api/v1/emails?${query}` : '/api/v1/emails')
+  return request<EmailListResponse>(query ? `/api/v1/emails?${query}` : '/api/v1/emails', { signal })
 }
 
 /** Obter estatisticas dos emails */
-export function getEmailStatistics(): Promise<EmailStatistics> {
-  return request<EmailStatistics>('/api/v1/emails/statistics')
+export function getEmailStatistics(signal?: AbortSignal): Promise<EmailStatistics> {
+  return request<EmailStatistics>('/api/v1/emails/statistics', { signal })
 }
 
 /** Deletar email especifico */

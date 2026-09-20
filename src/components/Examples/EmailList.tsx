@@ -1,15 +1,22 @@
+import { useState } from 'react'
 import { Eye, Trash2, Calendar } from 'lucide-react'
 import { badgeClass, difficultyIcon, itemTitulo } from '../../utils/formatters'
 import type { PhishingEmail } from '../../types/phishing.types'
+import ConfirmDialog from '../UI/ConfirmDialog'
+import ErrorBanner from '../UI/ErrorBanner'
 
 interface Props {
   emails: PhishingEmail[]
   onView: (email: PhishingEmail) => void
   onDelete: (emailId: string) => void
   isLoading: boolean
+  error: string | null
+  onDismissError: () => void
 }
 
-export default function EmailList({ emails, onView, onDelete, isLoading }: Props) {
+export default function EmailList({ emails, onView, onDelete, isLoading, error, onDismissError }: Props) {
+  const [paraApagar, setParaApagar] = useState<PhishingEmail | null>(null)
+
   if (isLoading) {
     return (
       <div className="card p-6">
@@ -20,6 +27,11 @@ export default function EmailList({ emails, onView, onDelete, isLoading }: Props
         </div>
       </div>
     )
+  }
+
+  // Falha de rede e banco vazio são coisas diferentes: com erro, mostra o erro.
+  if (error && emails.length === 0) {
+    return <ErrorBanner message={error} onDismiss={onDismissError} />
   }
 
   if (emails.length === 0) {
@@ -45,6 +57,11 @@ export default function EmailList({ emails, onView, onDelete, isLoading }: Props
 
   return (
     <div className="card p-6">
+      {error && (
+        <div className="mb-4">
+          <ErrorBanner message={error} onDismiss={onDismissError} />
+        </div>
+      )}
       <div className="space-y-4">
         {emails.map((email) => (
           <div
@@ -92,11 +109,7 @@ export default function EmailList({ emails, onView, onDelete, isLoading }: Props
                   <Eye className="size-4" />
                 </button>
                 <button
-                  onClick={() => {
-                    if (confirm('Tem certeza que deseja deletar este email?')) {
-                      onDelete(email.id)
-                    }
-                  }}
+                  onClick={() => setParaApagar(email)}
                   className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   title="Deletar email"
                 >
@@ -107,6 +120,19 @@ export default function EmailList({ emails, onView, onDelete, isLoading }: Props
           </div>
         ))}
       </div>
+
+      {paraApagar && (
+        <ConfirmDialog
+          title="Deletar email"
+          message={`Tem certeza que deseja deletar "${itemTitulo(paraApagar)}"? Esta ação não pode ser desfeita.`}
+          confirmLabel="Deletar"
+          onConfirm={() => {
+            onDelete(paraApagar.id)
+            setParaApagar(null)
+          }}
+          onCancel={() => setParaApagar(null)}
+        />
+      )}
     </div>
   )
 }

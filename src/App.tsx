@@ -65,7 +65,7 @@ export default function App() {
                   <Icon className="size-5" />
                   <div className="text-left">
                     <div className="font-medium">{tab.label}</div>
-                    <div className={`text-xs ${isActive ? 'text-primary-100' : 'text-gray-500'}`}>
+                    <div className={`text-xs ${isActive ? 'text-white/70' : 'text-gray-500'}`}>
                       {tab.description}
                     </div>
                   </div>
