@@ -1,79 +1,54 @@
-import type { BatchRequest, EmailFilters, EmailListResponse, EmailStatistics, PhishingEmail, PhishingEmailWithId, QueryRequest } from "../types/phishing.types"
+import { request } from './http'
+import type {
+  BatchAccepted,
+  BatchJob,
+  BatchRequest,
+  EmailFilters,
+  EmailListResponse,
+  EmailStatistics,
+  PhishingEmail,
+  QueryRequest,
+} from '../types/phishing.types'
 
-
-// Base da API — use .env (VITE_API_BASE_URL) quando não houver proxy reverso
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-
-async function postJSON<T>(path: string, body: any): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  })
-  if (!res.ok) {
-    const text = await res.text().catch(()=>'')
-    throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`)
-  }
-  return res.json() as Promise<T>
+/** Geracao unica. */
+export function generatePhishing(payload: QueryRequest): Promise<PhishingEmail> {
+  return request<PhishingEmail>('/api/v1/generate', { method: 'POST', body: payload })
 }
 
-/** Único — endpoint informado */
-export async function generatePhishing(payload: QueryRequest): Promise<PhishingEmail> {
-  return postJSON<PhishingEmail>('/api/v1/generate', payload)
+/** Lote assincrono: responde 202 com o `job_id`; o resultado vem por polling em `getBatchJob`. */
+export function generateBatch(payload: BatchRequest): Promise<BatchAccepted> {
+  return request<BatchAccepted>('/api/v1/generate/batch', { method: 'POST', body: payload })
 }
 
-/** Lote — ajuste a rota se sua API usar outro caminho (ex.: /api/v1/generate/batch) */
-export async function generateBatch(payload: BatchRequest): Promise<PhishingEmail[]> {
-  return postJSON<PhishingEmail[]>('/api/v1/generate-batch', payload)
+export function getBatchJob(jobId: string, signal?: AbortSignal): Promise<BatchJob> {
+  return request<BatchJob>(`/api/v1/generate/batch/${jobId}`, { signal })
 }
 
-async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`)
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`)
-  }
-  return res.json() as Promise<T>
-}
-
-async function deleteJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'DELETE'
-  })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`)
-  }
-  return res.json() as Promise<T>
-}
-
-/** Buscar email específico por ID */
-export async function getEmailById(emailId: string): Promise<PhishingEmailWithId> {
-  return getJSON<PhishingEmailWithId>(`/api/v1/emails/${emailId}`)
+/** Buscar email especifico por ID */
+export function getEmailById(emailId: string): Promise<PhishingEmail> {
+  return request<PhishingEmail>(`/api/v1/emails/${emailId}`)
 }
 
 /** Listar emails com filtros */
-export async function listEmails(filters: EmailFilters = {}): Promise<EmailListResponse> {
+export function listEmails(filters: EmailFilters = {}): Promise<EmailListResponse> {
   const params = new URLSearchParams()
-  
+
   if (filters.categoria) params.append('categoria', filters.categoria)
   if (filters.nivel) params.append('nivel', filters.nivel)
   if (filters.search) params.append('search', filters.search)
   if (filters.limit) params.append('limit', filters.limit.toString())
   if (filters.offset) params.append('offset', filters.offset.toString())
-  
+
   const query = params.toString()
-  const url = query ? `/api/v1/emails?${query}` : '/api/v1/emails'
-  
-  return getJSON<EmailListResponse>(url)
+  return request<EmailListResponse>(query ? `/api/v1/emails?${query}` : '/api/v1/emails')
 }
 
-/** Obter estatísticas dos emails */
-export async function getEmailStatistics(): Promise<EmailStatistics> {
-  return getJSON<EmailStatistics>('/api/v1/emails/statistics')
+/** Obter estatisticas dos emails */
+export function getEmailStatistics(): Promise<EmailStatistics> {
+  return request<EmailStatistics>('/api/v1/emails/statistics')
 }
 
-/** Deletar email específico */
-export async function deleteEmail(emailId: string): Promise<{message: string}> {
-  return deleteJSON<{message: string}>(`/api/v1/emails/${emailId}`)
+/** Deletar email especifico */
+export function deleteEmail(emailId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/v1/emails/${emailId}`, { method: 'DELETE' })
 }
