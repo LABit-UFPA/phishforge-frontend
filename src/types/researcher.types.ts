@@ -1,5 +1,16 @@
 import type { Difficulty } from './phishing.types'
 
+/** Campos mínimos para selecionar um item (sem conteúdo nem explicação). */
+export interface ItemCorpus {
+  id: string
+  assunto: string | null
+  remetente: string | null
+  categoria: string
+  nivel: Difficulty
+  channel: string
+  is_malicious: boolean
+}
+
 export type StatusRodada = 'rascunho' | 'aberta' | 'encerrada'
 
 export interface Rodada {
@@ -14,6 +25,7 @@ export interface Rodada {
 
 export interface RodadaDetalhe extends Rodada {
   email_ids: string[]
+  itens: ItemCorpus[]
 }
 
 export interface NovaRodada {

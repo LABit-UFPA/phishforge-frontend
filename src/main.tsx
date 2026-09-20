@@ -1,37 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
-import App from './App.tsx'
 import ErrorBoundary from './components/UI/ErrorBoundary.tsx'
-import RequireExpertSession from './modules/evaluation/components/RequireExpertSession.tsx'
-import ConsentPage from './modules/evaluation/pages/ConsentPage.tsx'
-import EvaluationPage from './modules/evaluation/pages/EvaluationPage.tsx'
-import FinishedPage from './modules/evaluation/pages/FinishedPage.tsx'
-import LoginPage from './modules/evaluation/pages/LoginPage.tsx'
-import ProfilePage from './modules/evaluation/pages/ProfilePage.tsx'
-import ResearcherPage from './modules/researcher/pages/ResearcherPage.tsx'
+import { resolverModo } from './config/appMode.ts'
+import AppRoutes from './routes.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
-        <Routes>
-          {/* Curadoria: o App continua exatamente como era (abas "Gerador" e "Exemplos"). */}
-          <Route path="/" element={<App />} />
-
-          {/* Módulo de avaliação por especialistas. */}
-          <Route path="/avaliacao/entrar" element={<LoginPage />} />
-          <Route path="/avaliacao" element={<RequireExpertSession />}>
-            <Route path="consentimento" element={<ConsentPage />} />
-            <Route path="perfil" element={<ProfilePage />} />
-            <Route path="concluido" element={<FinishedPage />} />
-            <Route path=":ordem" element={<EvaluationPage />} />
-          </Route>
-
-          {/* Console do pesquisador: credencial própria (X-API-Key), fora da sessão de especialista. */}
-          <Route path="/pesquisador" element={<ResearcherPage />} />
-        </Routes>
+        <AppRoutes modo={resolverModo(import.meta.env.VITE_APP_MODE)} />
       </BrowserRouter>
     </ErrorBoundary>
   </StrictMode>,

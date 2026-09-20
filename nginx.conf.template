@@ -1,0 +1,38 @@
+# Processado por envsubst na subida do container (imagem nginx:alpine, ver
+# Dockerfile). Unica variavel: API_UPSTREAM (ex.: http://phishforge-api:8000).
+server {
+    listen 3000;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Especialista: o Bearer (JWT) do proprio navegador passa direto.
+    location /api/v1/expert/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control "no-store" always;
+    }
+
+    # Pesquisador: o X-API-Key tambem vem do navegador (digitado no console) e
+    # passa direto. O nginx NAO injeta chave nenhuma aqui: injetar a
+    # RESEARCHER_API_KEY deixaria console e export (com PII) abertos a quem
+    # alcancar o frontend.
+    location /api/v1/researcher/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control "no-store" always;
+    }
+
+    # Todo o resto de /api/v1 (geracao, curadoria, avaliacao de justificativa)
+    # gasta credito de OpenAI e/ou expoe rotulos: nao e alcancavel pela internet.
+    location /api/v1/ {
+        return 404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
