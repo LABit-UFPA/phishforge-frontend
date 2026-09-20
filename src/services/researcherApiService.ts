@@ -1,10 +1,12 @@
 import { request, requestBlob } from './http'
+import type { Difficulty } from '../types/phishing.types'
 import type {
   CodigoEmitido,
   DatasetExport,
   EspecialistaLinha,
   EspecialistaNovo,
   FormatoExport,
+  ItemCorpus,
   ItensResultado,
   NovaRodada,
   Resumo,
@@ -19,6 +21,20 @@ export const listarRodadas = (k: string, signal?: AbortSignal) => request<Rodada
 
 export const obterRodada = (k: string, id: string, signal?: AbortSignal) =>
   request<RodadaDetalhe>(`${P}/rodadas/${id}`, com(k, signal))
+
+export interface FiltroCorpus {
+  nivel?: Difficulty
+  search?: string
+  limit: number
+  offset: number
+}
+
+export function listarCorpus(k: string, filtro: FiltroCorpus, signal?: AbortSignal) {
+  const params = new URLSearchParams({ limit: String(filtro.limit), offset: String(filtro.offset) })
+  if (filtro.nivel) params.set('nivel', filtro.nivel)
+  if (filtro.search) params.set('search', filtro.search)
+  return request<ItemCorpus[]>(`${P}/corpus?${params.toString()}`, com(k, signal))
+}
 
 export const criarRodada = (k: string, body: NovaRodada) =>
   request<Rodada>(`${P}/rodadas`, { ...com(k), method: 'POST', body })

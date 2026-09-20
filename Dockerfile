@@ -5,12 +5,19 @@ WORKDIR /app
 
 COPY package.json package-lock.json* yarn.lock* pnpm-lock.yaml* ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 
-ARG VITE_API_BASE_URL=http://localhost:8000
+# Vazio = same-origin: o navegador chama a propria origem e o nginx faz o proxy
+# (ver nginx.conf.template). Nunca ponha chave de API em ARG/ENV VITE_*: vai
+# para o bundle e e publica.
+ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+# full (todas as rotas) | expert (so /avaliacao/*). Ver README.
+ARG VITE_APP_MODE=full
+ENV VITE_APP_MODE=$VITE_APP_MODE
 
 RUN npm run build
 
@@ -19,15 +26,12 @@ FROM nginx:alpine
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Custom nginx config for SPA routing
-RUN echo 'server { \
-    listen 3000; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-        try_files $uri $uri/ /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+# O entrypoint da imagem roda envsubst em /etc/nginx/templates/*.template e
+# grava em /etc/nginx/conf.d/. Como so API_UPSTREAM interessa, restringimos a
+# substituicao a ela para nao tocar nas variaveis do proprio nginx ($uri etc.).
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+ENV NGINX_ENVSUBST_FILTER=^API_UPSTREAM$
+ENV API_UPSTREAM=http://phishforge-api:8000
 
 EXPOSE 3000
 

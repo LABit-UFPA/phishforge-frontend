@@ -12,7 +12,7 @@ Para desenvolver contra uma API real:
 3. `npm install && npm run dev`.
 
 > `VITE_API_KEY` vai para o bundle JavaScript e é **pública**: só use em desenvolvimento local.
-> Em produção a chave é injetada por um proxy same-origin no servidor (issue "Caminho de produção").
+> Em produção não há chave no bundle: o nginx faz proxy same-origin (ver "Produção" abaixo).
 
 ---
 
@@ -34,3 +34,38 @@ src/
 - `npm run dev` — servidor de desenvolvimento (Vite).
 - `npm run build` — checagem de tipos (`tsc -b`) e build de produção.
 - `npm run lint` — ESLint.
+
+
+---
+
+## Produção (Docker + nginx)
+
+O container serve o build estático **e** faz proxy same-origin para a API. O navegador só fala com a própria
+origem: sem CORS e sem chave de API no bundle.
+
+| Rota no nginx | Destino |
+|---|---|
+| `/api/v1/expert/*` | proxy para a API (o `Authorization: Bearer` do especialista passa direto) |
+| `/api/v1/researcher/*` | proxy para a API (o `X-API-Key` **digitado pelo pesquisador no console** passa direto) |
+| qualquer outra `/api/v1/*` | `404` (geração, curadoria e avaliação gastam crédito da OpenAI e/ou expõem rótulos) |
+| resto | SPA (`try_files … /index.html`) |
+
+O nginx **não injeta** a `RESEARCHER_API_KEY`: se injetasse, o console e o export (com PII) ficariam abertos a
+qualquer um que alcançasse o frontend. A chave continua sendo um segredo que o pesquisador digita.
+
+Consequência: a aba de curadoria (`/`, gerador e exemplos) não funciona por trás do proxy, de propósito. Ela é
+para desenvolvimento/uso interno contra a API direta (`VITE_API_BASE_URL` + `VITE_API_KEY`).
+
+### Variáveis
+
+| Variável | Quando | Significado |
+|---|---|---|
+| `VITE_API_BASE_URL` | build (`--build-arg`) | Base da API. **Vazio (padrão do Dockerfile) = same-origin**; em dev, `http://localhost:8000`. |
+| `VITE_APP_MODE` | build (`--build-arg`) | `full` (padrão): `/`, `/avaliacao/*` e `/pesquisador`. `expert`: só `/avaliacao/*` (as demais dão "Página não encontrada"). Valor desconhecido cai em `expert`. **Conveniência de implantação, não segurança**: o cegamento e a autenticação são do servidor. |
+| `VITE_API_KEY` | build, só dev | Chave servidor-a-servidor. **Vai para o bundle (pública).** Nunca use em imagem de produção (o `.dockerignore` já exclui `.env*`). |
+| `API_UPSTREAM` | runtime (`-e`) | Endereço da API para o proxy (padrão `http://phishforge-api:8000`). O nginx resolve o host na subida: a API precisa estar alcançável. |
+
+```bash
+docker build --build-arg VITE_APP_MODE=expert -t phishforge-frontend .
+docker run -p 3000:3000 -e API_UPSTREAM=http://phishforge-api:8000 phishforge-frontend
+```

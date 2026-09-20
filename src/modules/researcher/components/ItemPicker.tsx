@@ -3,25 +3,27 @@ import ErrorBanner from '../../../components/UI/ErrorBanner'
 import LoadingSpinner from '../../../components/UI/LoadingSpinner'
 import Pagination from '../../../components/UI/Pagination'
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue'
-import { listEmails } from '../../../services/apiService'
-import type { Difficulty, PhishingEmail } from '../../../types/phishing.types'
-import { elegivel, NIVEIS } from '../utils/composicao'
+import { listarCorpus } from '../../../services/researcherApiService'
+import type { Difficulty } from '../../../types/phishing.types'
+import type { ItemCorpus } from '../../../types/researcher.types'
+import { NIVEIS } from '../utils/composicao'
 
 const POR_PAGINA = 20
 
 interface Props {
-  selecionados: Map<string, PhishingEmail>
-  onAlternar: (email: PhishingEmail) => void
+  apiKey: string
+  selecionados: Map<string, ItemCorpus>
+  onAlternar: (item: ItemCorpus) => void
   desabilitado: boolean
 }
 
-/** Seleção múltipla sobre o corpus (`GET /api/v1/emails`, a mesma listagem da curadoria). */
-export default function ItemPicker({ selecionados, onAlternar, desabilitado }: Props) {
+/** Seleção múltipla sobre o corpus elegível (`GET /api/v1/researcher/corpus`, sob a chave do pesquisador). */
+export default function ItemPicker({ apiKey, selecionados, onAlternar, desabilitado }: Props) {
   const [nivel, setNivel] = useState<Difficulty | ''>('')
   const [busca, setBusca] = useState('')
   const buscaEstavel = useDebouncedValue(busca.trim(), 400)
   const [pagina, setPagina] = useState(1)
-  const [emails, setEmails] = useState<PhishingEmail[]>([])
+  const [emails, setEmails] = useState<ItemCorpus[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -31,16 +33,17 @@ export default function ItemPicker({ selecionados, onAlternar, desabilitado }: P
     const ctrl = new AbortController()
     setCarregando(true)
     setErro(null)
-    // O backend aplica UM filtro por vez (busca > nível); a busca, se houver, vence.
-    listEmails(
+    listarCorpus(
+      apiKey,
       {
         limit: POR_PAGINA,
         offset: (pagina - 1) * POR_PAGINA,
-        ...(buscaEstavel ? { search: buscaEstavel } : nivel ? { nivel } : {}),
+        ...(buscaEstavel ? { search: buscaEstavel } : {}),
+        ...(nivel ? { nivel } : {}),
       },
       ctrl.signal,
     )
-      .then((r) => setEmails(r.emails))
+      .then(setEmails)
       .catch((e: unknown) => {
         if (e instanceof DOMException && e.name === 'AbortError') return
         setErro(e instanceof Error ? e.message : 'Erro desconhecido')
@@ -49,7 +52,7 @@ export default function ItemPicker({ selecionados, onAlternar, desabilitado }: P
         if (!ctrl.signal.aborted) setCarregando(false)
       })
     return () => ctrl.abort()
-  }, [pagina, nivel, buscaEstavel])
+  }, [apiKey, pagina, nivel, buscaEstavel])
 
   return (
     <div className="space-y-3">
@@ -65,7 +68,6 @@ export default function ItemPicker({ selecionados, onAlternar, desabilitado }: P
           value={nivel}
           onChange={(e) => setNivel(e.target.value as Difficulty | '')}
           aria-label="Filtrar por nível"
-          disabled={buscaEstavel !== ''}
           className="rounded-lg border border-accent/40 p-2 text-sm"
         >
           <option value="">Todos os níveis</option>
@@ -74,7 +76,6 @@ export default function ItemPicker({ selecionados, onAlternar, desabilitado }: P
           ))}
         </select>
       </div>
-      {buscaEstavel !== '' && <p className="text-xs text-gray-500">Com busca ativa o filtro de nível é ignorado (regra do servidor).</p>}
       {erro && <ErrorBanner message={erro} />}
       {carregando ? (
         <LoadingSpinner />
@@ -82,15 +83,14 @@ export default function ItemPicker({ selecionados, onAlternar, desabilitado }: P
         <ul className="divide-y divide-accent/20 border border-accent/30 rounded-lg">
           {emails.length === 0 && <li className="p-3 text-sm text-gray-500">Nenhum item encontrado.</li>}
           {emails.map((email) => {
-            const ok = elegivel(email)
             const marcado = selecionados.has(email.id)
             return (
-              <li key={email.id} className={`p-3 flex items-start gap-3 ${ok ? '' : 'opacity-50'}`}>
+              <li key={email.id} className="p-3 flex items-start gap-3">
                 <input
                   type="checkbox"
                   id={`item-${email.id}`}
                   checked={marcado}
-                  disabled={desabilitado || (!ok && !marcado)}
+                  disabled={desabilitado}
                   onChange={() => onAlternar(email)}
                   className="mt-1"
                 />
@@ -98,7 +98,6 @@ export default function ItemPicker({ selecionados, onAlternar, desabilitado }: P
                   <span className="font-medium">{email.assunto ?? '(sem assunto)'}</span>
                   <span className="block text-xs text-gray-500">
                     {email.remetente ?? '—'} · {email.categoria} · nível {email.nivel}
-                    {!ok && ' · não elegível (precisa ser e-mail de phishing)'}
                   </span>
                 </label>
               </li>

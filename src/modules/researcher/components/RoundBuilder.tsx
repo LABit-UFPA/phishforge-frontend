@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ConfirmDialog from '../../../components/UI/ConfirmDialog'
 import ErrorBanner from '../../../components/UI/ErrorBanner'
-import LoadingSpinner from '../../../components/UI/LoadingSpinner'
-import { getEmailById } from '../../../services/apiService'
 import { abrirRodada, criarRodada, definirItens, encerrarRodada } from '../../../services/researcherApiService'
-import type { PhishingEmail } from '../../../types/phishing.types'
-import type { Rodada, RodadaDetalhe } from '../../../types/researcher.types'
+import type { ItemCorpus, Rodada, RodadaDetalhe } from '../../../types/researcher.types'
 import { alvoTexto, analisarComposicao, NIVEIS } from '../utils/composicao'
 import { tratarErro } from '../utils/erros'
 import ItemPicker from './ItemPicker'
@@ -75,41 +72,17 @@ function NovaRodadaForm({ apiKey, onMudou, onNaoAutorizado }: Omit<Props, 'rodad
 }
 
 export default function RoundBuilder({ apiKey, rodada, onMudou, onNaoAutorizado }: Props) {
-  const [selecionados, setSelecionados] = useState<Map<string, PhishingEmail>>(new Map())
+  const [selecionados, setSelecionados] = useState<Map<string, ItemCorpus>>(new Map())
   const [salvos, setSalvos] = useState<string[]>([])
-  const [carregandoSelecao, setCarregandoSelecao] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [confirmar, setConfirmar] = useState<'abrir' | 'encerrar' | null>(null)
 
-  const rodadaId = rodada?.id
-  const idsDaRodada = rodada?.email_ids
-
+  // Parte sempre do que o servidor tem: trocar de rodada ou recarregar descarta edição local.
   useEffect(() => {
-    if (!rodadaId || !idsDaRodada) {
-      setSelecionados(new Map())
-      setSalvos([])
-      return
-    }
-    let cancelado = false
-    setCarregandoSelecao(true)
-    setErro(null)
-    Promise.all(idsDaRodada.map((id) => getEmailById(id)))
-      .then((emails) => {
-        if (cancelado) return
-        setSelecionados(new Map(emails.map((e) => [e.id, e])))
-        setSalvos(idsDaRodada)
-      })
-      .catch((e: unknown) => {
-        if (!cancelado) setErro(e instanceof Error ? e.message : 'Erro desconhecido')
-      })
-      .finally(() => {
-        if (!cancelado) setCarregandoSelecao(false)
-      })
-    return () => {
-      cancelado = true
-    }
-  }, [rodadaId, idsDaRodada])
+    setSelecionados(new Map((rodada?.itens ?? []).map((i) => [i.id, i])))
+    setSalvos(rodada?.email_ids ?? [])
+  }, [rodada])
 
   const lista = useMemo(() => [...selecionados.values()], [selecionados])
   const analise = useMemo(() => analisarComposicao(lista), [lista])
@@ -120,7 +93,7 @@ export default function RoundBuilder({ apiKey, rodada, onMudou, onNaoAutorizado 
 
   const congelada = rodada.status !== 'rascunho'
 
-  const alternar = (email: PhishingEmail) =>
+  const alternar = (email: ItemCorpus) =>
     setSelecionados((atual) => {
       const novo = new Map(atual)
       if (novo.has(email.id)) novo.delete(email.id)
@@ -186,11 +159,9 @@ export default function RoundBuilder({ apiKey, rodada, onMudou, onNaoAutorizado 
           A composição está congelada ({rodada.status}): mudar os itens no meio da coleta invalidaria a comparação entre
           especialistas.
         </p>
-      ) : carregandoSelecao ? (
-        <LoadingSpinner label="Carregando itens da rodada…" />
       ) : (
         <>
-          <ItemPicker selecionados={selecionados} onAlternar={alternar} desabilitado={ocupado} />
+          <ItemPicker apiKey={apiKey} selecionados={selecionados} onAlternar={alternar} desabilitado={ocupado} />
           <div className="flex items-center gap-3">
             <button
               className="btn btn-primary"
