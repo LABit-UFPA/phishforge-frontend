@@ -47,14 +47,21 @@ origem: sem CORS e sem chave de API no bundle.
 |---|---|
 | `/api/v1/expert/*` | proxy para a API (o `Authorization: Bearer` do especialista passa direto) |
 | `/api/v1/researcher/*` | proxy para a API (o `X-API-Key` **digitado pelo pesquisador no console** passa direto) |
-| qualquer outra `/api/v1/*` | `404` (geração, curadoria e avaliação gastam crédito da OpenAI e/ou expõem rótulos) |
+| qualquer outra `/api/v1/*` | `404` por padrão (geração, curadoria e avaliação gastam crédito da OpenAI e/ou expõem rótulos). Com `CURATION_ENABLED=1`: proxy com a chave injetada (ver abaixo) |
 | resto | SPA (`try_files … /index.html`) |
 
 O nginx **não injeta** a `RESEARCHER_API_KEY`: se injetasse, o console e o export (com PII) ficariam abertos a
 qualquer um que alcançasse o frontend. A chave continua sendo um segredo que o pesquisador digita.
 
-Consequência: a aba de curadoria (`/`, gerador e exemplos) não funciona por trás do proxy, de propósito. Ela é
-para desenvolvimento/uso interno contra a API direta (`VITE_API_BASE_URL` + `VITE_API_KEY`).
+Consequência: por padrão a aba de curadoria (`/`, gerador e exemplos) não funciona por trás do proxy, de propósito.
+
+### Curadoria local (`CURATION_ENABLED=1`)
+
+Para testar a plataforma inteira num único endereço (ambiente **local ou interno**), suba com
+`CURATION_ENABLED=1` e `CURATION_API_KEY=<API_KEY da API>`. O nginx passa a repassar `/api/v1/*` injetando a chave
+servidor-a-servidor: ela fica no container, **não vai para o bundle**. Em contrapartida, quem alcançar a porta
+passa a poder gerar (gasta crédito OpenAI) e apagar itens sem autenticação. Por isso o compose publica essa porta só
+em `127.0.0.1`; nunca ligue isso numa origem pública.
 
 ### Variáveis
 
@@ -63,6 +70,7 @@ para desenvolvimento/uso interno contra a API direta (`VITE_API_BASE_URL` + `VIT
 | `VITE_API_BASE_URL` | build (`--build-arg`) | Base da API. **Vazio (padrão do Dockerfile) = same-origin**; em dev, `http://localhost:8000`. |
 | `VITE_APP_MODE` | build (`--build-arg`) | `full` (padrão): `/`, `/avaliacao/*` e `/pesquisador`. `expert`: só `/avaliacao/*` (as demais dão "Página não encontrada"). Valor desconhecido cai em `expert`. **Conveniência de implantação, não segurança**: o cegamento e a autenticação são do servidor. |
 | `VITE_API_KEY` | build, só dev | Chave servidor-a-servidor. **Vai para o bundle (pública).** Nunca use em imagem de produção (o `.dockerignore` já exclui `.env*`). |
+| `CURATION_ENABLED` / `CURATION_API_KEY` | runtime (`-e`) | `0` (padrão) ou `1`, e a chave servidor-a-servidor injetada pelo nginx quando `1`. Ver "Curadoria local". |
 | `API_UPSTREAM` | runtime (`-e`) | Endereço da API para o proxy (padrão `http://phishforge-api:8000`). O nginx resolve o host na subida: a API precisa estar alcançável. |
 
 ```bash
