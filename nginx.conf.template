@@ -1,6 +1,11 @@
 # Processado por envsubst na subida do container (imagem nginx:alpine, ver
-# Dockerfile). Unica variavel: API_UPSTREAM (ex.: http://phishforge-api:8000).
+# Dockerfile). Variaveis: API_UPSTREAM (ex.: http://phishforge-api:8000),
+# CURATION_ENABLED (0|1) e CURATION_API_KEY.
 server {
+    # 0 (padrao) = so /expert e /researcher passam. 1 = ambiente LOCAL/INTERNO em
+    # que tambem a curadoria (gerador, exemplos) funciona por este proxy.
+    set $curation "${CURATION_ENABLED}";
+
     listen 3000;
     root /usr/share/nginx/html;
     index index.html;
@@ -27,9 +32,23 @@ server {
     }
 
     # Todo o resto de /api/v1 (geracao, curadoria, avaliacao de justificativa)
-    # gasta credito de OpenAI e/ou expoe rotulos: nao e alcancavel pela internet.
+    # gasta credito de OpenAI e/ou expoe rotulos. Por padrao NAO e alcancavel
+    # pela internet (404). Com CURATION_ENABLED=1 (so local/interno) o nginx
+    # repassa e injeta a chave servidor-a-servidor: ela fica no container, nunca
+    # no bundle, mas QUALQUER um que alcance esta porta passa a poder gerar e
+    # apagar itens -- publique so em loopback/rede confiavel.
     location /api/v1/ {
-        return 404;
+        if ($curation != "1") {
+            return 404;
+        }
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-API-Key ${CURATION_API_KEY};
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # geracao unica passa por LLM + RAG + reranker
+        proxy_read_timeout 180s;
+        add_header Cache-Control "no-store" always;
     }
 
     location / {
