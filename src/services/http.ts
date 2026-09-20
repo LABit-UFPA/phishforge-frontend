@@ -40,12 +40,27 @@ function formatDetail(body: unknown, fallback: string): string {
   return fallback
 }
 
-export async function request<T>(
-  path: string,
-  init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
-): Promise<T> {
+interface RequestInitApi {
+  method?: string
+  body?: unknown
+  signal?: AbortSignal
+  /**
+   * `servico` (padrão): rotas do backend, com a `X-API-Key` servidor-a-servidor.
+   * `especialista`: rotas de `/api/v1/expert`, autenticadas por JWT (`Bearer`) e
+   * SEM a chave do serviço — um especialista no navegador não a tem, e mandá-la
+   * só a espalharia mais um pouco pelo bundle.
+   */
+  escopo?: 'servico' | 'especialista'
+  token?: string | null
+}
+
+export async function request<T>(path: string, init: RequestInitApi = {}): Promise<T> {
   const headers: Record<string, string> = {}
-  if (API_KEY) headers['X-API-Key'] = API_KEY
+  if (init.escopo === 'especialista') {
+    if (init.token) headers['Authorization'] = `Bearer ${init.token}`
+  } else if (API_KEY) {
+    headers['X-API-Key'] = API_KEY
+  }
   if (init.body !== undefined) headers['Content-Type'] = 'application/json'
 
   let res: Response
