@@ -6,15 +6,15 @@ import {
   getEmailById 
 } from '../services/apiService'
 import type { 
-  PhishingEmailWithId, 
+  PhishingEmail, 
   EmailFilters, 
   EmailStatistics 
 } from '../types/phishing.types'
 
 export function useExamples() {
-  const [emails, setEmails] = useState<PhishingEmailWithId[]>([])
+  const [emails, setEmails] = useState<PhishingEmail[]>([])
   const [statistics, setStatistics] = useState<EmailStatistics | null>(null)
-  const [selectedEmail, setSelectedEmail] = useState<PhishingEmailWithId | null>(null)
+  const [selectedEmail, setSelectedEmail] = useState<PhishingEmail | null>(null)
   const [filters, setFilters] = useState<EmailFilters>({ limit: 20, offset: 0 })
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingStats, setIsLoadingStats] = useState(false)
@@ -156,7 +156,7 @@ export function useExamples() {
   }
 
   // Visualizar email específico
-  const handleViewEmail = async (email: PhishingEmailWithId) => {
+  const handleViewEmail = async (email: PhishingEmail) => {
     try {
       console.log('Carregando email completo:', email.id)
       // Buscar dados completos do email se necessário

@@ -1,10 +1,10 @@
 import { Eye, Trash2, Calendar } from 'lucide-react'
-import { badgeClass, difficultyIcon } from '../../utils/formatters'
-import type { PhishingEmailWithId } from '../../types/phishing.types'
+import { badgeClass, difficultyIcon, itemTitulo } from '../../utils/formatters'
+import type { PhishingEmail } from '../../types/phishing.types'
 
 interface Props {
-  emails: PhishingEmailWithId[]
-  onView: (email: PhishingEmailWithId) => void
+  emails: PhishingEmail[]
+  onView: (email: PhishingEmail) => void
   onDelete: (emailId: string) => void
   isLoading: boolean
 }
@@ -32,7 +32,7 @@ export default function EmailList({ emails, onView, onDelete, isLoading }: Props
     )
   }
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'Data não disponível'
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -54,9 +54,9 @@ export default function EmailList({ emails, onView, onDelete, isLoading }: Props
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`badge ${badgeClass(email.nivel || 'facil')}`}>
-                    {difficultyIcon(email.nivel || 'facil')}
-                    {email.nivel || 'facil'}
+                  <span className={`badge ${badgeClass(email.nivel)}`}>
+                    {difficultyIcon(email.nivel)}
+                    {email.nivel}
                   </span>
                   {email.categoria && (
                     <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
@@ -66,12 +66,14 @@ export default function EmailList({ emails, onView, onDelete, isLoading }: Props
                 </div>
                 
                 <h4 className="font-medium text-gray-900 truncate mb-1">
-                  {email.assunto}
+                  {itemTitulo(email)}
                 </h4>
                 
-                <p className="text-sm text-gray-600 mb-2">
-                  De: {email.remetente} → Para: {email.receptor}
-                </p>
+                {email.remetente && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    De: {email.remetente} → Para: {email.receptor}
+                  </p>
+                )}
                 
                 {email.created_at && (
                   <div className="flex items-center gap-1 text-xs text-gray-500">
