@@ -1,230 +1,168 @@
-import { BarChart3, Calendar, Mail, PieChart, Shield, Target, TrendingUp, Zap } from 'lucide-react'
-import type { EmailStatistics } from '../../types/phishing.types'
+import { BarChart3, Calendar, Mail, PieChart, TrendingUp } from 'lucide-react'
+import { difficultyIcon } from '../../utils/formatters'
+import type { Difficulty, EmailStatistics } from '../../types/phishing.types'
 
 interface Props {
-  stats: EmailStatistics | null;
-  isLoading: boolean;
+  stats: EmailStatistics | null
+  isLoading: boolean
+}
+
+const NIVEIS: ReadonlyArray<{ id: Difficulty; rotulo: string; badge: string; barra: string }> = [
+  { id: 'facil', rotulo: 'Nível Fácil', badge: 'badge-easy', barra: 'bg-green-500' },
+  { id: 'medio', rotulo: 'Nível Médio', badge: 'badge-medium', barra: 'bg-yellow-500' },
+  { id: 'dificil', rotulo: 'Nível Difícil', badge: 'badge-hard', barra: 'bg-red-500' },
+]
+
+function Titulo({ children }: { children: string }) {
+  return (
+    <h3 className="text-lg font-semibold text-primary mb-6 flex items-center gap-2">
+      <BarChart3 className="size-5" />
+      {children}
+    </h3>
+  )
 }
 
 export default function Statistics({ stats, isLoading }: Props) {
-  // Loading state
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5" /> 
-          Estatísticas
-        </h3>
+      <div className="card p-6">
+        <Titulo>Estatísticas</Titulo>
         <div className="animate-pulse space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-gray-100 rounded-lg p-4">
-                <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                <div className="h-6 bg-gray-200 rounded mb-1"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-              </div>
+              <div key={i} className="h-24 bg-accent/10 rounded-lg" />
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="h-32 bg-gray-100 rounded-lg"></div>
-            <div className="h-32 bg-gray-100 rounded-lg"></div>
+            <div className="h-32 bg-accent/10 rounded-lg" />
+            <div className="h-32 bg-accent/10 rounded-lg" />
           </div>
         </div>
       </div>
-    );
+    )
   }
 
-  // Error/No data state
   if (!stats) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5" /> 
-          Estatísticas
-        </h3>
+      <div className="card p-6">
+        <Titulo>Estatísticas</Titulo>
         <div className="text-center py-8 text-gray-500">
-          <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <BarChart3 className="size-12 mx-auto mb-4 opacity-50" />
           <p>Não foi possível carregar as estatísticas.</p>
         </div>
       </div>
-    );
+    )
   }
 
-  // Calculate percentages for difficulty
-  const totalDifficulty = stats.by_difficulty.facil + stats.by_difficulty.medio + stats.by_difficulty.dificil;
-  const difficultyPercentages = {
-    facil: totalDifficulty > 0 ? Math.round((stats.by_difficulty.facil / totalDifficulty) * 100) : 0,
-    medio: totalDifficulty > 0 ? Math.round((stats.by_difficulty.medio / totalDifficulty) * 100) : 0,
-    dificil: totalDifficulty > 0 ? Math.round((stats.by_difficulty.dificil / totalDifficulty) * 100) : 0
-  };
-
-  // Get top categories
-  const topCategories = Object.entries(stats.by_category)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5);
+  const totalNiveis = NIVEIS.reduce((soma, n) => soma + stats.by_difficulty[n.id], 0)
+  const pct = (valor: number, total: number) => (total > 0 ? Math.round((valor / total) * 100) : 0)
+  const topCategorias = Object.entries(stats.by_category)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-        <BarChart3 className="w-5 h-5" /> 
-        Estatísticas dos Emails
-      </h3>
-      
-      {/* Cards principais */}
+    <div className="card p-6">
+      <Titulo>Estatísticas dos Emails</Titulo>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+        <div className="card p-4">
           <div className="flex items-center justify-between mb-2">
-            <Mail className="w-6 h-6 text-blue-600" />
-            <span className="text-xs font-medium text-blue-600 bg-blue-200 px-2 py-1 rounded-full">
-              TOTAL
-            </span>
+            <Mail className="size-6 text-primary" />
+            <span className="badge bg-accent/20 text-primary border-accent/40">TOTAL</span>
           </div>
-          <div className="text-2xl font-bold text-blue-900">{stats.total.toLocaleString()}</div>
-          <div className="text-sm text-blue-700">Emails cadastrados</div>
+          <div className="text-2xl font-bold text-gray-900">{stats.total.toLocaleString()}</div>
+          <div className="text-sm text-gray-600">Emails cadastrados</div>
         </div>
-        
-        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-          <div className="flex items-center justify-between mb-2">
-            <Shield className="w-6 h-6 text-green-600" />
-            <span className="text-xs font-medium text-green-600 bg-green-200 px-2 py-1 rounded-full">
-              {difficultyPercentages.facil}%
-            </span>
+
+        {NIVEIS.map((n) => (
+          <div key={n.id} className="card p-4">
+            <div className="flex items-center justify-between mb-2">
+              {difficultyIcon(n.id)}
+              <span className={`badge ${n.badge}`}>{pct(stats.by_difficulty[n.id], totalNiveis)}%</span>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">{stats.by_difficulty[n.id]}</div>
+            <div className="text-sm text-gray-600">{n.rotulo}</div>
           </div>
-          <div className="text-2xl font-bold text-green-900">{stats.by_difficulty.facil}</div>
-          <div className="text-sm text-green-700">Nível Fácil</div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-          <div className="flex items-center justify-between mb-2">
-            <Target className="w-6 h-6 text-yellow-600" />
-            <span className="text-xs font-medium text-yellow-600 bg-yellow-200 px-2 py-1 rounded-full">
-              {difficultyPercentages.medio}%
-            </span>
-          </div>
-          <div className="text-2xl font-bold text-yellow-900">{stats.by_difficulty.medio}</div>
-          <div className="text-sm text-yellow-700">Nível Médio</div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-          <div className="flex items-center justify-between mb-2">
-            <Zap className="w-6 h-6 text-red-600" />
-            <span className="text-xs font-medium text-red-600 bg-red-200 px-2 py-1 rounded-full">
-              {difficultyPercentages.dificil}%
-            </span>
-          </div>
-          <div className="text-2xl font-bold text-red-900">{stats.by_difficulty.dificil}</div>
-          <div className="text-sm text-red-700">Nível Difícil</div>
-        </div>
+        ))}
       </div>
 
-      {/* Seção inferior com categorias e atividade recente */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top Categorias */}
-        <div className="border rounded-lg p-4 bg-gray-50">
+        <div className="border border-accent/30 rounded-lg p-4">
           <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <PieChart className="w-4 h-4" />
+            <PieChart className="size-4 text-primary" />
             Top Categorias
           </h4>
-          
-          {topCategories.length > 0 ? (
+
+          {topCategorias.length > 0 ? (
             <div className="space-y-3">
-              {topCategories.map(([category, count], index) => {
-                const percentage = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
-                return (
-                  <div key={category} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${
-                        index === 0 ? 'bg-blue-500' :
-                        index === 1 ? 'bg-green-500' :
-                        index === 2 ? 'bg-yellow-500' :
-                        index === 3 ? 'bg-purple-500' : 'bg-gray-500'
-                      }`}></div>
-                      <span className="text-sm font-medium text-gray-700 capitalize">
-                        {category}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-gray-900">{count}</span>
-                      <span className="text-xs text-gray-500">({percentage}%)</span>
-                    </div>
+              {topCategorias.map(([categoria, quantidade]) => (
+                <div key={categoria} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 capitalize">{categoria}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-900">{quantidade}</span>
+                    <span className="text-xs text-gray-500">({pct(quantidade, stats.total)}%)</span>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           ) : (
             <div className="text-center py-4 text-gray-500">
-              <PieChart className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <PieChart className="size-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Nenhuma categoria encontrada</p>
             </div>
           )}
         </div>
 
-        {/* Atividade Recente */}
-        <div className="border rounded-lg p-4 bg-gray-50">
+        <div className="border border-accent/30 rounded-lg p-4">
           <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
+            <TrendingUp className="size-4 text-primary" />
             Atividade Recente
           </h4>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                <div>
-                  <div className="font-medium text-gray-900">Últimos 7 dias</div>
-                  <div className="text-sm text-gray-600">Emails criados</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-900">{stats.recent_count}</div>
-                {stats.total > 0 && (
-                  <div className="text-sm text-gray-500">
-                    {Math.round((stats.recent_count / stats.total) * 100)}% do total
-                  </div>
-                )}
+
+          <div className="flex items-center justify-between p-3 rounded-lg border border-accent/30">
+            <div className="flex items-center gap-3">
+              <Calendar className="size-5 text-primary" />
+              <div>
+                <div className="font-medium text-gray-900">Últimos 7 dias</div>
+                <div className="text-sm text-gray-600">Emails criados</div>
               </div>
             </div>
-
-            {stats.recent_count === 0 && (
-              <div className="text-center py-4 text-gray-500">
-                <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nenhum email criado recentemente</p>
-              </div>
-            )}
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">{stats.recent_count}</div>
+              {stats.total > 0 && (
+                <div className="text-sm text-gray-500">{pct(stats.recent_count, stats.total)}% do total</div>
+              )}
+            </div>
           </div>
+
+          {stats.recent_count === 0 && (
+            <p className="mt-4 text-center text-sm text-gray-500">Nenhum email criado recentemente</p>
+          )}
         </div>
       </div>
 
-      {/* Barra de progresso da distribuição por dificuldade */}
-      {totalDifficulty > 0 && (
-        <div className="mt-6 p-4 border rounded-lg bg-gray-50">
+      {totalNiveis > 0 && (
+        <div className="mt-6 p-4 border border-accent/30 rounded-lg">
           <h4 className="font-semibold text-gray-800 mb-3">Distribuição por Dificuldade</h4>
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-            <div className="h-full flex">
-              <div 
-                className="bg-green-500 transition-all duration-300" 
-                style={{ width: `${difficultyPercentages.facil}%` }}
-                title={`Fácil: ${stats.by_difficulty.facil} (${difficultyPercentages.facil}%)`}
-              ></div>
-              <div 
-                className="bg-yellow-500 transition-all duration-300" 
-                style={{ width: `${difficultyPercentages.medio}%` }}
-                title={`Médio: ${stats.by_difficulty.medio} (${difficultyPercentages.medio}%)`}
-              ></div>
-              <div 
-                className="bg-red-500 transition-all duration-300" 
-                style={{ width: `${difficultyPercentages.dificil}%` }}
-                title={`Difícil: ${stats.by_difficulty.dificil} (${difficultyPercentages.dificil}%)`}
-              ></div>
-            </div>
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden flex">
+            {NIVEIS.map((n) => (
+              <div
+                key={n.id}
+                className={`${n.barra} transition-all duration-300`}
+                style={{ width: `${pct(stats.by_difficulty[n.id], totalNiveis)}%` }}
+                title={`${n.rotulo}: ${stats.by_difficulty[n.id]} (${pct(stats.by_difficulty[n.id], totalNiveis)}%)`}
+              />
+            ))}
           </div>
           <div className="flex justify-between mt-2 text-sm text-gray-600">
-            <span>Fácil ({difficultyPercentages.facil}%)</span>
-            <span>Médio ({difficultyPercentages.medio}%)</span>
-            <span>Difícil ({difficultyPercentages.dificil}%)</span>
+            {NIVEIS.map((n) => (
+              <span key={n.id}>
+                {n.rotulo.replace('Nível ', '')} ({pct(stats.by_difficulty[n.id], totalNiveis)}%)
+              </span>
+            ))}
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }

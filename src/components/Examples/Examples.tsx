@@ -4,6 +4,8 @@ import Statistics from './Statistics'
 import EmailFilters from './EmailFilters'
 import EmailList from './EmailList'
 import EmailDetail from '../Generator/EmailDetail'
+import ErrorBanner from '../UI/ErrorBanner'
+import Pagination from '../UI/Pagination'
 
 export default function Examples() {
   const {
@@ -14,18 +16,20 @@ export default function Examples() {
     isLoading,
     isLoadingStats,
     hasActiveFilters,
-    loadEmails,
-    loadStatistics,
+    error,
+    statsError,
+    page,
+    hasNextPage,
+    nextPage,
+    prevPage,
     handleDeleteEmail,
     handleViewEmail,
     updateFilters,
     clearFilters,
-    setSelectedEmail
+    setSelectedEmail,
+    refreshAll,
+    clearErrors,
   } = useExamples()
-
-  const handleRefresh = async () => {
-    await Promise.all([loadEmails(), loadStatistics()])
-  }
 
   return (
     <div className="space-y-6">
@@ -40,21 +44,23 @@ export default function Examples() {
             Gerencie os emails de phishing gerados anteriormente
           </p>
         </div>
-        
+
         <button
-          onClick={handleRefresh}
+          onClick={() => void refreshAll()}
           disabled={isLoading || isLoadingStats}
-          className="btn-secondary flex items-center gap-2"
+          className="btn btn-secondary gap-2"
         >
           <RefreshCw className={`size-4 ${(isLoading || isLoadingStats) ? 'animate-spin' : ''}`} />
           Atualizar
         </button>
       </div>
 
+      {statsError && <ErrorBanner message={statsError} onDismiss={clearErrors} />}
+
       {/* Estatísticas */}
-      <Statistics 
-        stats={statistics} 
-        isLoading={isLoadingStats} 
+      <Statistics
+        stats={statistics}
+        isLoading={isLoadingStats}
       />
 
       <div className="grid lg:grid-cols-4 gap-6">
@@ -69,34 +75,44 @@ export default function Examples() {
         </div>
 
         {/* Lista de emails */}
-        <div className="lg:col-span-3">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="lg:col-span-3 space-y-4">
+          <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-primary">
-              Emails ({emails.length})
+              Emails nesta página ({emails.length})
             </h3>
             {hasActiveFilters && (
               <span className="text-sm text-gray-500">
-                Filtros aplicados
+                Filtro aplicado
               </span>
             )}
           </div>
-          
+
           <EmailList
             emails={emails}
             onView={handleViewEmail}
             onDelete={handleDeleteEmail}
             isLoading={isLoading}
+            error={error}
+            onDismissError={clearErrors}
+          />
+
+          <Pagination
+            page={page}
+            hasNext={hasNextPage}
+            onPrev={prevPage}
+            onNext={nextPage}
+            disabled={isLoading}
           />
         </div>
       </div>
 
       {/* Modal de detalhes */}
       {selectedEmail && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <EmailDetail 
-              email={selectedEmail} 
-              onClose={() => setSelectedEmail(null)} 
+            <EmailDetail
+              email={selectedEmail}
+              onClose={() => setSelectedEmail(null)}
             />
           </div>
         </div>
