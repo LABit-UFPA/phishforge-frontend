@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { analisarComposicao, elegivel, type ItemSelecionavel } from './composicao'
+import type { ItemCorpus } from '../../../types/researcher.types'
+import { analisarComposicao, combinarSelecaoAutomatica, elegivel, type ItemSelecionavel } from './composicao'
 
 const item = (nivel: ItemSelecionavel['nivel'], extra: Partial<ItemSelecionavel> = {}): ItemSelecionavel => ({
   nivel,
@@ -8,6 +9,18 @@ const item = (nivel: ItemSelecionavel['nivel'], extra: Partial<ItemSelecionavel>
   ...extra,
 })
 const varios = (nivel: ItemSelecionavel['nivel'], n: number) => Array.from({ length: n }, () => item(nivel))
+
+const itemCorpus = (nivel: ItemCorpus['nivel'], id: string): ItemCorpus => ({
+  id,
+  assunto: `Assunto ${id}`,
+  remetente: 'x@example.com',
+  categoria: 'financeiro',
+  nivel,
+  channel: 'email',
+  is_malicious: true,
+})
+const variosCorpus = (nivel: ItemCorpus['nivel'], n: number) =>
+  Array.from({ length: n }, (_, i) => itemCorpus(nivel, `${nivel}-${i}`))
 
 describe('analisarComposicao', () => {
   it('10/10/10 não tem avisos', () => {
@@ -42,5 +55,36 @@ describe('elegivel', () => {
     expect(elegivel(item('facil'))).toBe(true)
     expect(elegivel(item('facil', { channel: 'website' }))).toBe(false)
     expect(elegivel(item('facil', { is_malicious: false }))).toBe(false)
+  })
+})
+
+describe('combinarSelecaoAutomatica', () => {
+  it('corpus suficiente: 10 de cada nível, na ordem facil/medio/dificil, sem faltantes', () => {
+    const r = combinarSelecaoAutomatica({
+      facil: variosCorpus('facil', 14),
+      medio: variosCorpus('medio', 10),
+      dificil: variosCorpus('dificil', 20),
+    })
+    expect(r.faltando).toEqual({})
+    expect(r.selecionados).toHaveLength(30)
+    expect(r.selecionados.map((i) => i.nivel)).toEqual([
+      ...Array(10).fill('facil'),
+      ...Array(10).fill('medio'),
+      ...Array(10).fill('dificil'),
+    ])
+    // so os 10 primeiros de cada nivel entram, nunca mais
+    expect(r.selecionados.filter((i) => i.nivel === 'facil').map((i) => i.id)).toEqual(
+      variosCorpus('facil', 10).map((i) => i.id),
+    )
+  })
+
+  it('corpus insuficiente: reporta quanto falta por nivel e devolve so o que ha', () => {
+    const r = combinarSelecaoAutomatica({
+      facil: variosCorpus('facil', 3),
+      medio: variosCorpus('medio', 10),
+      dificil: variosCorpus('dificil', 0),
+    })
+    expect(r.faltando).toEqual({ facil: 7, dificil: 10 })
+    expect(r.selecionados).toHaveLength(13)
   })
 })

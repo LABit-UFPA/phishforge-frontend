@@ -1,4 +1,5 @@
 import type { Difficulty } from '../../../types/phishing.types'
+import type { ItemCorpus } from '../../../types/researcher.types'
 
 export const NIVEIS: Difficulty[] = ['facil', 'medio', 'dificil']
 
@@ -39,4 +40,26 @@ export function analisarComposicao(itens: ItemSelecionavel[]): AnaliseComposicao
     }
   }
   return { total: itens.length, distribuicao, avisos }
+}
+
+export interface ResultadoSelecaoAutomatica {
+  selecionados: ItemCorpus[]
+  /** Nível -> quantos itens faltam para completar `ALVO_POR_NIVEL`. Vazio quando o corpus alcança. */
+  faltando: Partial<Record<Difficulty, number>>
+}
+
+/**
+ * Combina os `ALVO_POR_NIVEL` primeiros itens de cada nível (já elegíveis: `/researcher/corpus`
+ * só devolve canal e-mail + phishing) na ordem `NIVEIS`. Não há escolha humana aqui de propósito
+ * — a seleção da rodada passou a ser inteiramente automática.
+ */
+export function combinarSelecaoAutomatica(porNivel: Record<Difficulty, ItemCorpus[]>): ResultadoSelecaoAutomatica {
+  const selecionados: ItemCorpus[] = []
+  const faltando: Partial<Record<Difficulty, number>> = {}
+  for (const nivel of NIVEIS) {
+    const itens = porNivel[nivel].slice(0, ALVO_POR_NIVEL)
+    selecionados.push(...itens)
+    if (itens.length < ALVO_POR_NIVEL) faltando[nivel] = ALVO_POR_NIVEL - itens.length
+  }
+  return { selecionados, faltando }
 }
