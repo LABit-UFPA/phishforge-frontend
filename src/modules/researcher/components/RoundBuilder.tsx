@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import ConfirmDialog from '../../../components/UI/ConfirmDialog'
 import ErrorBanner from '../../../components/UI/ErrorBanner'
-import { abrirRodada, criarRodada, definirItens, encerrarRodada } from '../../../services/researcherApiService'
+import LoadingSpinner from '../../../components/UI/LoadingSpinner'
+import { abrirRodada, criarRodada, definirItens, encerrarRodada, listarCorpus } from '../../../services/researcherApiService'
+import type { Difficulty } from '../../../types/phishing.types'
 import type { ItemCorpus, Rodada, RodadaDetalhe } from '../../../types/researcher.types'
-import { alvoTexto, analisarComposicao, NIVEIS } from '../utils/composicao'
+import { ALVO_POR_NIVEL, alvoTexto, analisarComposicao, combinarSelecaoAutomatica, NIVEIS } from '../utils/composicao'
 import { tratarErro } from '../utils/erros'
-import ItemPicker from './ItemPicker'
 
 const CAMPO = 'w-full rounded-lg border border-accent/40 focus:outline-none focus:ring-2 focus:ring-primary/40 p-2 text-sm'
 
@@ -72,34 +73,17 @@ function NovaRodadaForm({ apiKey, onMudou, onNaoAutorizado }: Omit<Props, 'rodad
 }
 
 export default function RoundBuilder({ apiKey, rodada, onMudou, onNaoAutorizado }: Props) {
-  const [selecionados, setSelecionados] = useState<Map<string, ItemCorpus>>(new Map())
-  const [salvos, setSalvos] = useState<string[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [confirmar, setConfirmar] = useState<'abrir' | 'encerrar' | null>(null)
 
-  // Parte sempre do que o servidor tem: trocar de rodada ou recarregar descarta edição local.
-  useEffect(() => {
-    setSelecionados(new Map((rodada?.itens ?? []).map((i) => [i.id, i])))
-    setSalvos(rodada?.email_ids ?? [])
-  }, [rodada])
-
-  const lista = useMemo(() => [...selecionados.values()], [selecionados])
+  const lista = useMemo<ItemCorpus[]>(() => rodada?.itens ?? [], [rodada])
   const analise = useMemo(() => analisarComposicao(lista), [lista])
-  const idsAtuais = lista.map((e) => e.id)
-  const sujo = idsAtuais.length !== salvos.length || idsAtuais.some((id, i) => id !== salvos[i])
 
   if (!rodada) return <NovaRodadaForm apiKey={apiKey} onMudou={onMudou} onNaoAutorizado={onNaoAutorizado} />
 
   const congelada = rodada.status !== 'rascunho'
-
-  const alternar = (email: ItemCorpus) =>
-    setSelecionados((atual) => {
-      const novo = new Map(atual)
-      if (novo.has(email.id)) novo.delete(email.id)
-      else novo.set(email.id, email)
-      return novo
-    })
+  const podeAbrir = !congelada && !ocupado && rodada.total_itens > 0 && analise.avisos.length === 0
 
   const executar = async (acao: () => Promise<unknown>) => {
     setOcupado(true)
@@ -115,6 +99,30 @@ export default function RoundBuilder({ apiKey, rodada, onMudou, onNaoAutorizado 
     }
   }
 
+  const selecionarAutomaticamente = () =>
+    executar(async () => {
+      // A seleção não é mais manual: o sistema busca os ALVO_POR_NIVEL itens
+      // mais recentes de cada nível no corpus elegível (/researcher/corpus já
+      // só devolve e-mail + phishing) e grava direto, sem passo intermediário.
+      const entradas = await Promise.all(
+        NIVEIS.map(
+          async (nivel): Promise<[Difficulty, ItemCorpus[]]> => [
+            nivel,
+            await listarCorpus(apiKey, { nivel, limit: ALVO_POR_NIVEL, offset: 0 }),
+          ],
+        ),
+      )
+      const porNivel = Object.fromEntries(entradas) as Record<Difficulty, ItemCorpus[]>
+      const { selecionados, faltando } = combinarSelecaoAutomatica(porNivel)
+      if (Object.keys(faltando).length > 0) {
+        const detalhe = Object.entries(faltando)
+          .map(([nivel, qtd]) => `faltam ${qtd} do nível ${nivel}`)
+          .join('; ')
+        throw new Error(`Corpus insuficiente para selecionar automaticamente: ${detalhe}. Gere mais itens no Gerador antes de continuar.`)
+      }
+      await definirItens(apiKey, rodada.id, selecionados.map((i) => i.id))
+    })
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -123,7 +131,7 @@ export default function RoundBuilder({ apiKey, rodada, onMudou, onNaoAutorizado 
         <span className="text-xs text-gray-500">TCLE {rodada.tcle_versao}</span>
         <div className="ml-auto flex gap-2">
           {rodada.status === 'rascunho' && (
-            <button className="btn btn-primary" disabled={ocupado || sujo || rodada.total_itens === 0} onClick={() => setConfirmar('abrir')}>
+            <button className="btn btn-primary" disabled={!podeAbrir} onClick={() => setConfirmar('abrir')}>
               Abrir rodada
             </button>
           )}
@@ -160,19 +168,27 @@ export default function RoundBuilder({ apiKey, rodada, onMudou, onNaoAutorizado 
           especialistas.
         </p>
       ) : (
-        <>
-          <ItemPicker apiKey={apiKey} selecionados={selecionados} onAlternar={alternar} desabilitado={ocupado} />
-          <div className="flex items-center gap-3">
-            <button
-              className="btn btn-primary"
-              disabled={ocupado || !sujo || lista.length === 0}
-              onClick={() => void executar(() => definirItens(apiKey, rodada.id, idsAtuais))}
-            >
-              Salvar seleção
-            </button>
-            {sujo && <span className="text-xs text-amber-800">Há alterações não salvas: salve antes de abrir.</span>}
-          </div>
-        </>
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            Os itens são escolhidos pelo sistema, automaticamente: {ALVO_POR_NIVEL} por nível, a partir do corpus já
+            gerado (canal e-mail, phishing). Se faltar corpus, gere mais itens no Gerador e selecione de novo.
+          </p>
+          <button className="btn btn-primary" disabled={ocupado} onClick={() => void selecionarAutomaticamente()}>
+            {ocupado ? 'Selecionando…' : rodada.total_itens > 0 ? 'Selecionar novamente' : `Selecionar automaticamente (${alvoTexto})`}
+          </button>
+          {ocupado && <LoadingSpinner label="Consultando o corpus e gravando a seleção…" />}
+          {lista.length > 0 && (
+            <ul className="divide-y divide-accent/20 border border-accent/30 rounded-lg text-sm">
+              {lista.map((item) => (
+                <li key={item.id} className="p-2 flex items-center gap-3">
+                  <span className="badge shrink-0">{item.nivel}</span>
+                  <span className="flex-1 truncate">{item.assunto ?? '(sem assunto)'}</span>
+                  <span className="text-xs text-gray-500 shrink-0">{item.categoria}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       {confirmar === 'abrir' && (
