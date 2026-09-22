@@ -83,7 +83,11 @@ function Console({ apiKey, aoSair }: { apiKey: string; aoSair: (aviso: string | 
     listarRodadas(apiKey, ctrl.signal)
       .then((r) => {
         setRodadas(r)
-        setEmFoco((atual) => (atual && r.some((x) => x.id === atual) ? atual : null))
+        // Sem rodada salva (ou a salva já não existe mais), cai na mais recente --
+        // não em "+ Nova rodada": senão a seção de cadastro de especialista (onde
+        // fica o botão de gerar código) some da tela na primeira visita, mesmo
+        // com rodadas já existentes.
+        setEmFoco((atual) => (atual && r.some((x) => x.id === atual) ? atual : (r[0]?.id ?? null)))
       })
       .catch((e: unknown) => {
         const msg = tratarErro(e, naoAutorizado)
