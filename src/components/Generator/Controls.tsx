@@ -21,9 +21,6 @@ interface Props {
   total: number
   setTotal: (n: number) => void
 
-  maliciousRatio: number
-  setMaliciousRatio: (n: number) => void
-
   isLoading: boolean
   submit: () => void
 }
@@ -35,7 +32,6 @@ export default function Controls({
   context, setContext,
   isMalicious, setIsMalicious,
   total, setTotal,
-  maliciousRatio, setMaliciousRatio,
   isLoading, submit
 }: Props) {
   return (
@@ -114,21 +110,7 @@ export default function Controls({
               onChange={(e) => setTotal(Math.min(100, Math.max(1, Number(e.target.value) || 1)))}
               className="w-full rounded-lg border border-accent/40 focus:outline-none focus:ring-2 focus:ring-primary/40 p-2.5"
             />
-
-            <label className="block text-sm font-medium mt-4 mb-2" htmlFor="ratio">
-              Proporção de phishing: {Math.round(maliciousRatio * 100)}%
-              <span className="text-gray-500 font-normal"> (o restante são itens legítimos)</span>
-            </label>
-            <input
-              id="ratio"
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={maliciousRatio}
-              onChange={(e) => setMaliciousRatio(Number(e.target.value))}
-              className="w-full"
-            />
+            <p className="mt-2 text-xs text-gray-500">O lote gera apenas phishing.</p>
           </div>
         )}
 

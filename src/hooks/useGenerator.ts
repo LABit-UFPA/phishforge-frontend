@@ -38,7 +38,6 @@ export function useGenerator() {
   const [context, setContext] = useState('')
   const [isMalicious, setIsMalicious] = useState(true)
   const [total, setTotal] = useState(10)
-  const [maliciousRatio, setMaliciousRatio] = useState(1)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -106,7 +105,8 @@ export function useGenerator() {
           context: context.trim(),
           difficulties: batchDifficulties,
           total,
-          malicious_ratio: maliciousRatio,
+          // Lote so de phishing: a API recusa (422) qualquer outro valor por ora.
+          malicious_ratio: 1,
         })
         setResult(null)
         setJob(null)
@@ -118,7 +118,7 @@ export function useGenerator() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [mode, difficulty, context, isMalicious, batchDifficulties, total, maliciousRatio])
+  }, [mode, difficulty, context, isMalicious, batchDifficulties, total])
 
   const jobEmAndamento = jobId !== null && error === null && (job === null || !TERMINAL.has(job.status))
 
@@ -130,7 +130,6 @@ export function useGenerator() {
     context, setContext,
     isMalicious, setIsMalicious,
     total, setTotal,
-    maliciousRatio, setMaliciousRatio,
     isLoading: isSubmitting || jobEmAndamento,
     error, clearError: () => setError(null),
     result,

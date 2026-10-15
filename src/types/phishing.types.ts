@@ -63,7 +63,7 @@ export interface BatchRequest {
   difficulties: Difficulty[]
   /** 1..100 */
   total: number
-  /** 0..1 — 1.0 = todos phishing, 0.0 = todos legitimos. */
+  /** 0..1 — 1.0 = todos phishing, 0.0 = todos legitimos. Por ora a API so aceita 1.0 (422 para os demais). */
   malicious_ratio: number
   channel?: Channel
 }
