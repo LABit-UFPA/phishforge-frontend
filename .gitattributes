@@ -1,0 +1,10 @@
+# LF em todo arquivo de texto, inclusive em clones no Windows (onde o Git
+# converte para CRLF por padrao): Dockerfile e nginx.conf.template sao
+# lidos dentro de containers Linux.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
